@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
     auto client = Tally::CreateWebSocketClient();
 
     // Track received messages
-    int messagesReceived = 0;
+    std::atomic<int> messagesReceived{0};
 
     // Set up callbacks
     client->SetStateCallback([](Tally::ConnectionState state, const Tally::WebSocketError* error) {
@@ -45,7 +45,7 @@ int main(int argc, char* argv[]) {
         std::string msg(reinterpret_cast<const char*>(data), len);
         std::cout << "[RECV] " << (type == Tally::MessageType::Text ? "Text" : "Binary")
                   << " (" << len << " bytes): " << msg << std::endl;
-        messagesReceived++;
+        messagesReceived.fetch_add(1);
     });
 
     // Configure connection

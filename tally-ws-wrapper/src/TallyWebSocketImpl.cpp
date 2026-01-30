@@ -128,11 +128,12 @@ bool LwsWebSocketClient::Connect(const WebSocketConfig& config) {
     const char* address = nullptr;
     int port = 0;
     const char* path = nullptr;
-    char urlBuf[512];
-    strncpy(urlBuf, config.url.c_str(), sizeof(urlBuf) - 1);
-    urlBuf[sizeof(urlBuf) - 1] = '\0';
+    
+    // Use vector for dynamic sizing and to ensure null termination
+    std::vector<char> urlBuf(config.url.begin(), config.url.end());
+    urlBuf.push_back('\0');
 
-    if (lws_parse_uri(urlBuf, &prot, &address, &port, &path) != 0) {
+    if (lws_parse_uri(urlBuf.data(), &prot, &address, &port, &path) != 0) {
         WebSocketError err{-1, "Failed to parse URL"};
         SetState(ConnectionState::Error, &err);
         Cleanup();
@@ -182,7 +183,7 @@ void LwsWebSocketClient::Disconnect(int code, const std::string& reason) {
     }
 
     // Cleanup will happen in callback or force it
-    Cleanup();
+    // Cleanup(); // Removed immediate cleanup to allow close handshake to complete
 }
 
 bool LwsWebSocketClient::IsConnected() const {
@@ -264,31 +265,35 @@ void LwsWebSocketClient::SetState(ConnectionState newState, const WebSocketError
 }
 
 void LwsWebSocketClient::ProcessSendQueue() {
-    std::lock_guard<std::mutex> lock(m_queueMutex);
-
-    while (!m_sendQueue.empty() && m_wsi) {
-        QueuedMessage& msg = m_sendQueue.front();
-
-        enum lws_write_protocol wp = (msg.type == MessageType::Text)
-            ? LWS_WRITE_TEXT
-            : LWS_WRITE_BINARY;
-
-        size_t dataLen = msg.data.size() - LWS_PRE;
-        int written = lws_write(m_wsi, msg.data.data() + LWS_PRE, dataLen, wp);
-
-        if (written < 0) {
-            // Error - will be handled in callback
-            break;
+    QueuedMessage msg;
+    {
+        std::lock_guard<std::mutex> lock(m_queueMutex);
+        if (m_sendQueue.empty() || !m_wsi) {
+            return;
         }
-
+        msg = std::move(m_sendQueue.front());
         m_sendQueue.pop();
-
-        // Only send one message per writable callback
-        break;
     }
 
-    // Request more writable callbacks if queue not empty
-    if (!m_sendQueue.empty() && m_wsi) {
+    enum lws_write_protocol wp = (msg.type == MessageType::Text)
+        ? LWS_WRITE_TEXT
+        : LWS_WRITE_BINARY;
+
+    size_t dataLen = msg.data.size() - LWS_PRE;
+    int written = lws_write(m_wsi, msg.data.data() + LWS_PRE, dataLen, wp);
+
+    if (written < 0) {
+        // Error - will be handled in callback
+        return;
+    }
+
+    bool hasMore;
+    {
+        std::lock_guard<std::mutex> lock(m_queueMutex);
+        hasMore = !m_sendQueue.empty();
+    }
+    
+    if (hasMore && m_wsi) {
         lws_callback_on_writable(m_wsi);
     }
 }
