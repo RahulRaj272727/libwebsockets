@@ -55,9 +55,12 @@ private:
     std::queue<QueuedMessage> m_sendQueue;
     std::mutex m_queueMutex;
 
+public:
     // libwebsockets callback
     static int LwsCallback(struct lws* wsi, enum lws_callback_reasons reason,
                           void* user, void* in, size_t len);
+
+private:
 
     // Helper methods
     void SetState(ConnectionState newState, const WebSocketError* error = nullptr);
