@@ -1,0 +1,16 @@
+{
+  "terminal.integrated.shellIntegration.enabled": true,
+  "terminal.integrated.enablePersistentSessions": true,
+  "terminal.integrated.commandsToSkipShell": [
+    "workbench.action.terminal.focusPrevious",
+    "workbench.action.terminal.focusNext"
+  ],
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "source": "PowerShell",
+      "icon": "terminal-powershell",
+      "args": ["-NoExit"]
+    }
+  }
+}
