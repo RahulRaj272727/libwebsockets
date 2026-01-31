@@ -183,6 +183,9 @@ bool LwsWebSocketClient::Connect(const WebSocketConfig& config) {
     ccinfo.host = address;
     ccinfo.origin = address;
     ccinfo.protocol = protocols[0].name;
+    if (!m_config.subprotocol.empty()) {
+        ccinfo.protocol = m_config.subprotocol.c_str();
+    }
     ccinfo.userdata = this;
 
     // Check for TLS (wss://)
@@ -368,9 +371,14 @@ int LwsWebSocketClient::Poll(int timeoutMs) {
 void LwsWebSocketClient::SetState(ConnectionState newState, const WebSocketError* error) {
     m_state = newState;
 
-    std::lock_guard<std::mutex> lock(m_callbackMutex);
-    if (m_stateCallback) {
-        m_stateCallback(newState, error);
+    StateCallback callback;
+    {
+        std::lock_guard<std::mutex> lock(m_callbackMutex);
+        callback = m_stateCallback;
+    }
+
+    if (callback) {
+        callback(newState, error);
     }
 }
 
@@ -441,13 +449,12 @@ int LwsWebSocketClient::LwsCallback(struct lws* wsi, enum lws_callback_reasons r
 {
     LwsWebSocketClient* self = nullptr;
 
-    // Get our instance pointer
-    if (user) {
-        self = static_cast<LwsWebSocketClient*>(user);
-    } else {
-        struct lws_context* ctx = lws_get_context(wsi);
-        if (ctx) {
-            self = static_cast<LwsWebSocketClient*>(lws_context_user(ctx));
+    // Get our instance pointer from context user data (safer than using 'user' param directly)
+    struct lws_context* ctx = lws_get_context(wsi);
+    if (ctx) {
+        void* user_data = lws_context_user(ctx);
+        if (user_data) {
+            self = static_cast<LwsWebSocketClient*>(user_data);
         }
     }
 
@@ -465,9 +472,14 @@ int LwsWebSocketClient::LwsCallback(struct lws* wsi, enum lws_callback_reasons r
                 ? MessageType::Binary
                 : MessageType::Text;
 
-            std::lock_guard<std::mutex> lock(self->m_callbackMutex);
-            if (self->m_messageCallback) {
-                self->m_messageCallback(static_cast<const uint8_t*>(in), len, type);
+            MessageCallback callback;
+            {
+                std::lock_guard<std::mutex> lock(self->m_callbackMutex);
+                callback = self->m_messageCallback;
+            }
+
+            if (callback) {
+                callback(static_cast<const uint8_t*>(in), len, type);
             }
         }
         break;

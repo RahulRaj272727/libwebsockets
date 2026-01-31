@@ -63,7 +63,8 @@ int main(int argc, char* argv[]) {
     Tally::WebSocketConfig config;
     // Using ws:// since we built without TLS
     // For testing, you can use local servers or public echo services
-    config.url = "ws://echo.websocket.org";  // Note: This may require wss://
+    // Default to localhost for safety, use CLI arg for specifics
+    config.url = "ws://localhost:7681"; 
     config.connectTimeoutMs = 10000;
 
     // Check for URL argument
