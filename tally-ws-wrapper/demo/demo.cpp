@@ -10,6 +10,17 @@
 #include <chrono>
 #include <thread>
 
+/**
+ * @brief Demo program that exercises the Tally WebSocket client by connecting to an echo server, sending messages, and reporting received echoes.
+ *
+ * The program creates a WebSocket client, registers state and message callbacks that log events and count incoming messages,
+ * connects to a configurable echo server URL (default: ws://echo.websocket.org), sends three text messages, waits for echoes,
+ * then disconnects and exits.
+ *
+ * @param argc Argument count. If greater than 1, argv[1] is used as the WebSocket URL instead of the default.
+ * @param argv Argument values. argv[1] may override the default echo server URL.
+ * @return int Exit status: `0` if at least three echo messages were received, `1` otherwise or on connection/setup failure.
+ */
 int main(int argc, char* argv[]) {
     std::cout << "=== Tally WebSocket Demo ===" << std::endl;
     std::cout << "Library: " << Tally::GetWebSocketLibraryVersion() << std::endl;
