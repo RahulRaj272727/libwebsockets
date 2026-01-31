@@ -132,4 +132,4 @@ if(BUILD_TESTS)
     )
 
     message(STATUS "Tests enabled. Build with 'cmake --build . --target check' to run tests.")
-endif()
+endif()
