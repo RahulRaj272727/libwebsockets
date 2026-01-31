@@ -60,11 +60,79 @@ struct WebSocketError {
 };
 
 /**
- * @brief Abstract interface for WebSocket client
+ * @brief Abstract interface for a WebSocket client.
  *
- * This interface defines the contract for WebSocket operations.
- * Implementations can use libwebsockets, IXWebSocket, or any
- * other WebSocket library.
+ * Provides a framework-agnostic contract for establishing connections,
+ * sending/receiving messages, and receiving state change notifications.
+ */
+
+/**
+ * @brief Message callback type.
+ * @param data Pointer to the received message payload.
+ * @param length Length of the message payload in bytes.
+ * @param type Type of the received message (text or binary).
+ */
+
+/**
+ * @brief State change callback type.
+ * @param newState The new connection state.
+ * @param error Pointer to error details when `newState` is Error; otherwise `nullptr`.
+ */
+
+/**
+ * @brief Initiate a connection using the provided configuration.
+ * @param config Connection parameters and behavior options.
+ * @return `true` if the connection attempt was started, `false` on immediate failure.
+ */
+
+/**
+ * @brief Initiate a graceful or abrupt disconnection.
+ * @param code WebSocket close code (default 1000 indicates normal closure).
+ * @param reason Optional human-readable reason for closure.
+ */
+
+/**
+ * @brief Query whether the client is currently connected.
+ * @return `true` if a connection is established and usable, `false` otherwise.
+ */
+
+/**
+ * @brief Retrieve the current connection state.
+ * @return The current ConnectionState value.
+ */
+
+/**
+ * @brief Queue a UTF-8 text message for sending.
+ * @param message UTF-8 encoded text to send.
+ * @return `true` if the message was accepted for sending, `false` on failure.
+ */
+
+/**
+ * @brief Queue a binary message for sending.
+ * @param data Pointer to the binary payload.
+ * @param length Length of the binary payload in bytes.
+ * @return `true` if the message was accepted for sending, `false` on failure.
+ */
+
+/**
+ * @brief Register a callback to be invoked when a message is received.
+ * @param callback Function called with message payload, length, and type.
+ */
+
+/**
+ * @brief Register a callback to be invoked when the connection state changes.
+ * @param callback Function called with the new state and optional error details.
+ */
+
+/**
+ * @brief Process pending WebSocket events.
+ *
+ * Should be called periodically if the implementation does not run an internal
+ * event thread. Implementations may process network I/O, invoke callbacks, and
+ * handle timeouts when this method is called.
+ *
+ * @param timeoutMs Maximum time in milliseconds to wait for events (implementation-defined).
+ * @return Number of events processed, or -1 on error.
  */
 class IWebSocketClient {
 public:
