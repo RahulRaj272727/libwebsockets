@@ -1,12 +1,17 @@
-// 1. PCH Header (MUST BE FIRST)
-#include "connector.h"
+// Include C++ standard headers FIRST (before wss.hpp which has extern "C")
+#include <cstdio>
+#include <cstdarg>
+#include <cstring>
+
+// Include the header with libwebsockets (has extern "C" wrapper)
+#include "wss.hpp"
 
 // --------------------------------------------------------------------------
 // CONFIGURATION
 // --------------------------------------------------------------------------
 #define LOG_FILE_PATH "tally_ws_debug.txt"
-#define DEMO_HOST "127.0.0.1"
-#define DEMO_PORT 9002
+#define DEMO_HOST "apigw.tdl.poc.tgodev.com"
+#define DEMO_PORT 443
 
 // --------------------------------------------------------------------------
 // GLOBAL FLAGS
@@ -76,6 +81,10 @@ static int callback_tally_demo(struct lws *wsi, enum lws_callback_reasons reason
         memcpy(&buf[LWS_PRE], msg, msg_len);
 
         int n = lws_write(wsi, &buf[LWS_PRE], msg_len, LWS_WRITE_TEXT);
+        if (n < 0) {
+            LogDebug("ERROR: lws_write failed with code %d", n);
+            return -1; // Force close on write error
+        }
         LogDebug("Sent %d bytes: %s", n, msg);
         
         if (session) session->msgSent = true; // Mark as sent
@@ -87,7 +96,12 @@ static int callback_tally_demo(struct lws *wsi, enum lws_callback_reasons reason
         LogDebug("Received: %.*s", (int)len, (char*)in);
         
         LogDebug("Echo received. Closing session...");
-        lws_close_reason(wsi, LWS_CLOSE_STATUS_NORMAL, (unsigned char*)"Echo Done", 9);
+        
+        // FIX: Use strlen instead of magic number '9'
+        {
+            const char* close_msg = "Echo Done";
+            lws_close_reason(wsi, LWS_CLOSE_STATUS_NORMAL, (unsigned char*)close_msg, strlen(close_msg));
+        }
         return -1; // Force Close
 
     // --- Errors ---
@@ -131,6 +145,7 @@ void TestWebSocketLifecycle() {
     info.protocols = protocols;
     info.gid = (gid_t)-1; 
     info.uid = (uid_t)-1;
+    info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;  // Initialize SSL
 
     struct lws_context *context = lws_create_context(&info);
     if (!context) {
@@ -147,6 +162,7 @@ void TestWebSocketLifecycle() {
     ccinfo.host = ccinfo.address;
     ccinfo.origin = ccinfo.address;
     ccinfo.protocol = protocols[0].name;
+    ccinfo.ssl_connection = LCCSCF_USE_SSL;  // Enable WSS (secure WebSocket)
 
     LogDebug("Connecting to %s:%d...", ccinfo.address, ccinfo.port);
     if (!lws_client_connect_via_info(&ccinfo)) {

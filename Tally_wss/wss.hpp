@@ -113,14 +113,8 @@ void TestWebSocketLifecycle();
 #undef HTTP_STATUS_HTTP_VERSION_NOT_SUPPORTED
 
 
-// 4. Include Library
-#ifdef __cplusplus
-extern "C" {
-#endif
-    #include <libwebsockets.h>
-#ifdef __cplusplus
-}
-#endif
+// 4. Include Library (libwebsockets.h has its own C linkage guards)
+#include <libwebsockets.h>
 
 // 5. Restore Macros (Only listing headers for brevity, compiler doesn't care about order here as long as pop matches push stack)
 #pragma pop_macro("HTTP_STATUS_HTTP_VERSION_NOT_SUPPORTED")
