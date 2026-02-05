@@ -76,7 +76,14 @@ static int callback_tally_demo(struct lws *wsi, enum lws_callback_reasons reason
         const char* msg = "Hello from Tally! (Polite Mode)";
         size_t msg_len = strlen(msg);
         
-        unsigned char buf[LWS_PRE + 256]; 
+        unsigned char buf[LWS_PRE + 256];
+        
+        // FIX: Buffer overflow protection
+        if (msg_len > sizeof(buf) - LWS_PRE) {
+            LogDebug("ERROR: Message too large (%zu bytes, max %zu)", msg_len, sizeof(buf) - LWS_PRE);
+            return -1;
+        }
+        
         memset(buf, 0, sizeof(buf));
         memcpy(&buf[LWS_PRE], msg, msg_len);
 
@@ -85,6 +92,12 @@ static int callback_tally_demo(struct lws *wsi, enum lws_callback_reasons reason
             LogDebug("ERROR: lws_write failed with code %d", n);
             return -1; // Force close on write error
         }
+        
+        // FIX: Partial write detection
+        if (n < (int)msg_len) {
+            LogDebug("WARNING: Partial write %d/%zu bytes", n, msg_len);
+        }
+        
         LogDebug("Sent %d bytes: %s", n, msg);
         
         if (session) session->msgSent = true; // Mark as sent

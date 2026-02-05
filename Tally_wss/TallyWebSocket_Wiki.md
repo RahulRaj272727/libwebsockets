@@ -10,13 +10,13 @@ We have successfully linked the static version of `libwebsockets` into `tally.ex
 1.  **Macro Collisions**: Tally and Windows headers define macros (e.g., `ERROR`, `min`, `max`, `DELETE`, `GET`) that clash with `libwebsockets` enums.
     *   *Solution*: Created `wss.h` (wrapper) which uses `#undef` and `#pragma push_macro` to isolate the library.
 2.  **Precompiled Headers (PCH)**: `connector.h` must be the first include.
-    *   *Solution*: Structured [wss.cpp](file:///d:/ALL_BINS/TallylibwebsocketsPOC/Tally_wss/wss.cpp) to respect PCH order while maintaining macro safety.
-3.  **Build System (Maya)**: Configured Maya to link [websockets_static.lib](file:///d:/ALL_BINS/TallylibwebsocketsPOC/build_release/lib/Release/websockets_static.lib) and `openssl`/`zlib` dependencies.
+    *   *Solution*: Structured `Tally_wss/wss.cpp` to respect PCH order while maintaining macro safety.
+3.  **Build System (Maya)**: Configured Maya to link `websockets_static.lib` and OpenSSL/zlib dependencies.
 
-### POC Implementation ([wss.cpp](file:///d:/ALL_BINS/TallylibwebsocketsPOC/Tally_wss/wss.cpp))
+### POC Implementation (`Tally_wss/wss.cpp`)
 *   **Single File**: All logic is currently in `src/serverconnector/wss/wss.cpp` for easy verification.
-*   **Blocking Loop**: The test function [TestWebSocketLifecycle()](file:///d:/ALL_BINS/TallylibwebsocketsPOC/Tally_wss/wss.cpp#153-222) runs a `while` loop that blocks the calling thread for ~5 seconds.
-*   **File Logging**: writes debug info to `C:\tally_ws_debug.txt`.
+*   **Blocking Loop**: The test function `TestWebSocketLifecycle()` runs a `while` loop that blocks the calling thread for ~5 seconds.
+*   **File Logging**: Writes debug info to `tally_ws_debug.txt` (relative to working directory).
 
 ---
 
@@ -25,9 +25,9 @@ We have successfully linked the static version of `libwebsockets` into `tally.ex
 ### Architecture
 *   [ ] **Dedicated Thread**: The `lws_service()` loop MUST run in its own `std::thread` (e.g., `NetworkThread`). It cannot start on the UI thread or Main Tally thread, or it will freeze the application.
 *   [ ] **Thread-Safe Queue**: Tally Logic threads should not call `lws_write` directly.
-    *   *Design*: specific [Send(msg)](file:///d:/ALL_BINS/TallylibwebsocketsPOC/tally-ws-wrapper/src/TallyWebSocketImpl.cpp#200-221) function should push to a `ConcurrentQueue`.
-    *   *Design*: The `LWS_CALLBACK_CLIENT_WRITEABLE` event should pop from this queue and send.
-*   [ ] **Encapsulation**: Move the global functions in [wss.cpp](file:///d:/ALL_BINS/TallylibwebsocketsPOC/Tally_wss/wss.cpp) into a proper C++ class (e.g., `class TallyWSClient`).
+  *   *Design*: A `Send(msg)` function should push to a `ConcurrentQueue`.
+  *   *Design*: The `LWS_CALLBACK_CLIENT_WRITEABLE` event should pop from this queue and send.
+*   [ ] **Encapsulation**: Move the global functions in `Tally_wss/wss.cpp` into a proper C++ class (e.g., `class TallyWSClient`).
 
 ### Reliability
 *   [ ] **Reconnection Logic**: Implement exponential backoff (retry after 1s, 2s, 4s...) if the connection drops (`LWS_CALLBACK_CLIENT_CONNECTION_ERROR`).
@@ -39,7 +39,7 @@ We have successfully linked the static version of `libwebsockets` into `tally.ex
 *   [ ] **Memory Management**: Ensure `lws_context_destroy` is called exactly once on application shutdown to prevent memory leaks.
 
 ## 3. How to Use (Current)
-Call the function [TestWebSocketLifecycle()](file:///d:/ALL_BINS/TallylibwebsocketsPOC/Tally_wss/wss.cpp#153-222) from anywhere in the codebase.
+Call the function `TestWebSocketLifecycle()` from anywhere in the codebase.
 ```cpp
 #include "serverconnector/wss/wss.h"
 
@@ -51,9 +51,12 @@ void TallyStartup() {
 
 ## 4. Troubleshooting
 *   **Syntax Errors (C2059)**: Usually caused by a new Windows macro colliding with libwebsockets. Add the colliding word to the `#undef` list in `wss.h`.
-*   **Linker Errors**: Ensure [websockets_static.lib](file:///d:/ALL_BINS/TallylibwebsocketsPOC/build_release/lib/Release/websockets_static.lib), `libssl.lib`, `libcrypto.lib`, `crypt32.lib` are all listed in `.maya` file.
+*   **Linker Errors**: Ensure `websockets_static.lib`, `libssl.lib`, `libcrypto.lib`, `crypt32.lib` are all listed in `.maya` file.
 
-## 5. Artifacts
-*   **Production Module Code**: Committed to `d:\ALL_BINS\TallylibwebsocketsPOC`
-*   **Commit Hash**: `2bb2f3c249e62cfe230b86d5639a02382761e0c0`
-*   **Files**: [Tally_wss/wss.hpp](file:///d:/ALL_BINS/TallylibwebsocketsPOC/Tally_wss/wss.hpp), [Tally_wss/wss.cpp](file:///d:/ALL_BINS/TallylibwebsocketsPOC/Tally_wss/wss.cpp)
+## 5. Dependencies
+*   **OpenSSL**: `D:\ALL_BINS\openssl-1.1.1d` (headers and libraries for TLS support)
+*   **libwebsockets**: Built from source with OpenSSL TLS backend
+
+## 6. Artifacts
+*   **Production Module Code**: Committed to `Tally_wss/` directory
+*   **Files**: `Tally_wss/wss.hpp`, `Tally_wss/wss.cpp`
